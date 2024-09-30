@@ -2,11 +2,23 @@ const express = require('express');
 const path = require('path');
 const indexRouter = require('./routes/index');
 const app = express();
+const cors = require("cors");
 
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-const io = new Server(server);
+app.use(cors({
+  origin: "*", // Cho phép tất cả các domain
+  methods: ["GET", "POST"],
+  credentials: false // Để sử dụng cookie, hãy thay đổi thành true
+}));
+
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Cho phép tất cả các domain
+    methods: ["GET", "POST"]
+  }
+});
 
 const PORT = 3000;
 
@@ -14,12 +26,11 @@ const PORT = 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on("connection", function (socket) {
-  io.sockets.emit(
-    "user-joined",
-    socket.id,
-    io.engine.clientsCount,
-    Object.keys(io.sockets.sockets)
-  );
+  io.emit("user-joined", {
+    id: socket.id,
+    count: io.engine.clientsCount,
+    clients: Array.from(io.sockets.sockets.keys()), // Lấy danh sách ID socket
+  });
 
   socket.on("signal", (toId, message) => {
     io.to(toId).emit("signal", socket.id, message);
